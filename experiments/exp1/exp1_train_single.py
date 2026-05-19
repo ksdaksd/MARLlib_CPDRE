@@ -7,7 +7,7 @@ from marllib import marl
 
 import marllib.envs.base_env.cpdre  # noqa: F401
 
-from exp_20260513_model_direct.exp1_common import (
+from exp1.exp1_common import (
     EXP1_GROUPS,
     RL_META_DIR,
     base_env_args,

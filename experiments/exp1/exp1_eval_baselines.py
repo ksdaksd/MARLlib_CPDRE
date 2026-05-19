@@ -6,7 +6,7 @@ from typing import Dict
 import numpy as np
 
 from custom_envs.coal_power_direct_reciprocity_env import CPDRE
-from exp_20260513_model_direct.exp1_common import (
+from experiments.exp1.exp1_common import (
     BASELINE_DIR,
     EXP1_GROUPS,
     base_env_args,
