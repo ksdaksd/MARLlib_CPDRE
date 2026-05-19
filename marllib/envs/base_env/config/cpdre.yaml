@@ -1,0 +1,94 @@
+env: cpdre
+
+env_args:
+  map_name: direct_1c3u
+
+  # Episode and system scale
+  num_power: 3
+  episode_len: 156
+  weeks_per_year: 52
+  off_peak_weeks: 26
+  lead_time: 1
+  seed: 42
+
+  # Experiment mode
+  mechanism_mode: none
+  allocation_mode: fair # Exp1 uses fair; reciprocity experiments B2-B4 should override to weighted
+  demand_mode: deterministic
+  price_mode: seasonal
+
+  # Demand and supply
+  demand_offpeak: 1.0
+  demand_peak: 1.4
+  demand_sigma: 0.0
+  demand_ar1_rho: 0.60
+  demand_corr: 0.0
+  theta_offpeak: 1.15
+  theta_peak: 0.80
+  supply_sigma: 0.0
+
+  # Price
+  price_offpeak: 1.0
+  price_peak: 1.2
+  price_sigma: 0.0
+  price_feedback_kappa: 0.10
+  price_feedback_psi: 0.70
+  price_min: 0.6
+  price_max: 1.8
+
+  # Inventory and order
+  omega_min: 1.0
+  omega_max: 5.0
+  omega_base: 2.0
+  omega_high: 3.0
+  safe_inventory_weeks: 1.5
+  q_max_weeks: 6.0
+  lambda_d: 0.30
+
+  # Coal allocation weight
+  w_min: 0.5
+  w_max: 2.0
+  w_high: 1.5
+
+  # Trust and reciprocity
+  mu_c_init: 0.50
+  mu_u_init: 0.50
+  alpha_c: 0.05
+  alpha_u: 0.05
+  delta_c: 0.005
+  delta_u: 0.005
+  trust_threshold_c: 0.50
+  trust_threshold_u: 0.50
+  eta_c: 0.30
+  eta_u: 0.30
+
+  # Economic parameters
+  coal_unit_cost: 0.70
+  unsold_cost: 0.10
+  power_unit_revenue: 1.80
+  holding_cost: 0.03
+  shortage_cost: 5.00
+
+  # Reward shaping
+  lambda_coal_shortage: 2.00
+  lambda_coal_fairness: 0.30
+
+  # Observation and numerical control
+  obs_clip: 10.0
+  reward_clip:
+  initial_inventory_weeks: 2.0
+  include_reciprocity_in_obs: true
+
+  # Fixed policy hooks
+  fixed_power_omega:
+  fixed_coal_weight:
+
+  # Normalized action convention
+  action_low: -1.0
+  action_high: 1.0
+
+mask_flag: False
+global_state_flag: False
+opp_action_in_cc: False
+agent_level_batch_update: False
+fixed_batch_timesteps: 1560

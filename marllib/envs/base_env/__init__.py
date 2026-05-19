@@ -38,6 +38,7 @@ except Exception as e:
     ENV_REGISTRY["mpe"] = str(e)
 
 
+
 try:
     from marllib.envs.base_env.gymnasium_mpe import RLlibMPE_Gymnasium
 
@@ -161,3 +162,23 @@ try:
     ENV_REGISTRY["sisl"] = RLlibSISL
 except Exception as e:
     ENV_REGISTRY["sisl"] = str(e)
+
+
+## 20250504
+try:
+    from marllib.envs.base_env.toy_coop import RLLibToyCoop
+
+    ENV_REGISTRY["toy_coop"] = RLLibToyCoop
+
+except Exception as e:
+    ENV_REGISTRY["toy_coop"] = str(e)
+    ## 20250504
+
+
+try:
+    from marllib.envs.base_env.cpdre import RLLibCPDRE
+
+    ENV_REGISTRY["cpdre"] = RLLibCPDRE
+
+except Exception as e:
+    ENV_REGISTRY["cpdre"] = str(e)
