@@ -414,8 +414,12 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
             "jain": [],
             "system_profit": [],
             "coal_profit": [],
+            "coal_profit_norm": [],
             "power_profit_total": [],
+            "power_profit_norm_total": [],
             "shortage_rate": [],
+            "shortage_norm": [],
+            "fairness_penalty": [],
             "unsold": [],
         }
 
@@ -597,8 +601,12 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
             jain=jain,
             system_profit=profit_info["system_profit"],
             coal_profit=profit_info["coal_profit"],
+            coal_profit_norm=profit_info["coal_profit_norm"],
             power_profit_total=profit_info["power_profit_total"],
+            power_profit_norm_total=profit_info["power_profit_norm_total"],
             shortage_rate=self.last_shortage_rate,
+            shortage_norm=profit_info["shortage_norm"],
+            fairness_penalty=profit_info["fairness_penalty"],
             unsold=unsold,
         )
 
@@ -1227,6 +1235,10 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
         shortage = np.asarray(self.history["shortage"], dtype=np.float64)
         fill_rate = np.asarray(self.history["fill_rate"], dtype=np.float64)
         profits = np.asarray(self.history["system_profit"], dtype=np.float64)
+        coal_profit_norm = np.asarray(self.history.get("coal_profit_norm", []), dtype=np.float64)
+        power_profit_norm_total = np.asarray(self.history.get("power_profit_norm_total", []), dtype=np.float64)
+        shortage_norm = np.asarray(self.history.get("shortage_norm", []), dtype=np.float64)
+        fairness_penalty = np.asarray(self.history.get("fairness_penalty", []), dtype=np.float64)
         jain = np.asarray(self.history["jain"], dtype=np.float64)
 
         demand_cv = self._cv(demand.sum(axis=1))
@@ -1242,6 +1254,12 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
         return {
             "total_shortage_rate": float(shortage.sum() / (demand.sum() + EPS)),
             "system_profit": float(profits.sum()),
+            "coal_profit_norm_sum": float(coal_profit_norm.sum()) if coal_profit_norm.size else np.nan,
+            "coal_profit_norm_mean": float(coal_profit_norm.mean()) if coal_profit_norm.size else np.nan,
+            "power_profit_norm_total_sum": float(power_profit_norm_total.sum()) if power_profit_norm_total.size else np.nan,
+            "power_profit_norm_total_mean": float(power_profit_norm_total.mean()) if power_profit_norm_total.size else np.nan,
+            "shortage_norm_mean": float(shortage_norm.mean()) if shortage_norm.size else np.nan,
+            "fairness_penalty_mean": float(fairness_penalty.mean()) if fairness_penalty.size else np.nan,
             "avg_jain": float(jain.mean()),
             "inventory_violation_rate": inventory_violation,
             "order_cv": float(order_cv),
