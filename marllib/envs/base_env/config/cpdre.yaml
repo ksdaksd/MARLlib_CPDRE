@@ -88,7 +88,7 @@ env_args:
   action_high: 1.0
 
 mask_flag: False
-global_state_flag: False
+use_global_state: True
 opp_action_in_cc: False
 agent_level_batch_update: False
 fixed_batch_timesteps: 1560
