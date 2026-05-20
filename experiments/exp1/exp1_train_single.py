@@ -19,11 +19,11 @@ from exp1.exp1_common import (
 
 def build_algo(algo_name: str):
     if algo_name == "ippo":
-        return marl.algos.ippo(hyperparam_source="test")
+        return marl.algos.ippo(hyperparam_source="common")
     if algo_name == "mappo":
-        return marl.algos.mappo(hyperparam_source="test")
+        return marl.algos.mappo(hyperparam_source="common")
     if algo_name == "happo":
-        return marl.algos.happo(hyperparam_source="test")
+        return marl.algos.happo(hyperparam_source="common")
     raise ValueError(f"Unknown algo: {algo_name}")
 
 

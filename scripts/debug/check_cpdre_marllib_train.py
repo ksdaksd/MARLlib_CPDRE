@@ -8,7 +8,28 @@ try:
 except Exception:
     torch = None
 
+
+import os
+import sys
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.insert(0, PROJECT_ROOT)
+
+print("PROJECT_ROOT =", PROJECT_ROOT)
+
+
+
+
 from marllib import marl
+
+
+# import marllib
+# import marllib.envs.base_env as base_env
+#
+# print("USING marllib:", marllib.__file__)
+# print("USING base_env:", base_env.__file__)
+# print("ENV_REGISTRY:", base_env.ENV_REGISTRY.keys())
+
 
 # 主动 import，确保 cpdre 环境在 MARLlib 的 ENV_REGISTRY 中完成注册
 import marllib.envs.base_env.cpdre  # noqa: F401
@@ -145,7 +166,7 @@ def main():
 
     # 烟雾测试先用 MAPPO + MLP，目的是确认环境能被训练链路跑通。
     # 正式实验一如果严格采用文档中的 GRU，可在正式训练脚本里改 core_arch。
-    mappo = marl.algos.mappo(hyperparam_source="test")
+    mappo = marl.algos.mappo(hyperparam_source="common")
 
     model = marl.build_model(
         env,
