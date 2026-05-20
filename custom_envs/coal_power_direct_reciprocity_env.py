@@ -904,62 +904,109 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
         return self.config.mechanism_mode.lower() in {"dynamic", "long_contract", "trigger"}
 
     def _compute_rewards(
-        self,
-        price: float,
-        demand: np.ndarray,
-        shipments: np.ndarray,
-        served: np.ndarray,
-        shortage: np.ndarray,
-        ending_inventory: np.ndarray,
-        unsold: float,
-        fill_rate: np.ndarray,
-        jain: float,
-        g_u: float,
-        g_c: float,
-        mu_c_reward: Optional[float] = None,
-        mu_u_reward: Optional[float] = None,
+            self,
+            price: float,
+            demand: np.ndarray,
+            shipments: np.ndarray,
+            served: np.ndarray,
+            shortage: np.ndarray,
+            ending_inventory: np.ndarray,
+            unsold: float,
+            fill_rate: np.ndarray,
+            jain: float,
+            g_u: float,
+            g_c: float,
+            mu_c_reward: Optional[float] = None,
+            mu_u_reward: Optional[float] = None,
     ) -> Tuple[Dict[str, float], Dict[str, float]]:
+        cfg = self.config
+
+        # 1. 原始经济利润，保留真实经济含义，后面用于 info 和结果统计
         coal_profit = (
-            (price - self.config.coal_unit_cost) * float(shipments.sum())
-            - self.config.unsold_cost * float(unsold)
+                (price - cfg.coal_unit_cost) * float(shipments.sum())
+                - cfg.unsold_cost * float(unsold)
         )
+
         power_profit_vec = (
-            self.config.power_unit_revenue * served
-            - price * shipments
-            - self.config.holding_cost * ending_inventory
-            - self.config.shortage_cost * shortage
+                cfg.power_unit_revenue * served
+                - price * shipments
+                - cfg.holding_cost * ending_inventory
+                - cfg.shortage_cost * shortage
         )
 
         system_profit = float(coal_profit + power_profit_vec.sum())
-        shortage_rate = float(shortage.sum() / (demand.sum() + EPS))
 
-        rewards: Dict[str, float] = {}
+        # 2. 固定经济基准：单个电企淡季单周期基准购煤金额
+        # 当前默认 price_offpeak=1, demand_offpeak=1，所以默认下数值变化不大；
+        # 但一旦改 m、需求规模、价格尺度，这一步就很关键。
+        unit_money_ref = max(
+            float(cfg.price_offpeak) * float(cfg.demand_offpeak),
+            EPS,
+        )
+
+        # 煤企面对 m 个电企，利润天然是系统规模，所以用 m 倍基准归一化
+        system_money_ref = max(
+            float(self.num_power) * unit_money_ref,
+            EPS,
+        )
+
+        coal_profit_norm = float(coal_profit / system_money_ref)
+        power_profit_norm_vec = power_profit_vec / unit_money_ref
+
+        # 3. 缺煤惩罚归一化
+        # reward 里建议用当季系统基准需求作分母，避免随机需求冲击改变惩罚尺度
+        base_demand_ref = max(float(np.sum(self.current_base_demand)), EPS)
+        shortage_norm = float(np.sum(shortage) / base_demand_ref)
+
+        # 结果评价里仍保留真实缺煤率，便于论文汇报
+        shortage_rate = float(np.sum(shortage) / (np.sum(demand) + EPS))
+
+        # 4. Jain 公平性和互惠贡献本身已经是无量纲变量，不再二次归一化
+        fairness_penalty = 1.0 - float(jain)
+
         if mu_c_reward is None:
             mu_c_reward = self.mu_c
         if mu_u_reward is None:
             mu_u_reward = self.mu_u
 
-        r_coal = float(coal_profit)
+        rewards: Dict[str, float] = {}
+
+        # 5. 煤企奖励
+        r_coal = coal_profit_norm
+
         if self._reciprocity_enabled():
-            r_coal += self.config.eta_c * float(mu_c_reward) * float(g_c)
-        r_coal -= self.config.lambda_coal_shortage * shortage_rate
-        r_coal -= self.config.lambda_coal_fairness * (1.0 - float(jain))
+            r_coal += cfg.eta_c * float(mu_c_reward) * float(g_c)
+
+        r_coal -= cfg.lambda_coal_shortage * shortage_norm
+        r_coal -= cfg.lambda_coal_fairness * fairness_penalty
+
         rewards[self.coal_agent_id] = self._maybe_clip_reward(r_coal)
 
+        # 6. 电企奖励
         for idx, agent in enumerate(self.power_agent_ids):
-            r = float(power_profit_vec[idx])
+            r = float(power_profit_norm_vec[idx])
+
             if idx == 0 and self._reciprocity_enabled():
-                r += self.config.eta_u * float(mu_u_reward) * float(g_u)
+                r += cfg.eta_u * float(mu_u_reward) * float(g_u)
+
             rewards[agent] = self._maybe_clip_reward(r)
 
+        # 7. info 同时记录原始利润和归一化利润，后面画图、写论文都方便
         info = {
             "coal_profit": float(coal_profit),
+            "coal_profit_norm": float(coal_profit_norm),
             "power_profit_total": float(power_profit_vec.sum()),
+            "power_profit_norm_total": float(power_profit_norm_vec.sum()),
             "system_profit": float(system_profit),
             "shortage_rate": float(shortage_rate),
+            "shortage_norm": float(shortage_norm),
+            "fairness_penalty": float(fairness_penalty),
         }
+
         for idx in range(self.num_power):
             info[f"power_profit_u{idx + 1}"] = float(power_profit_vec[idx])
+            info[f"power_profit_norm_u{idx + 1}"] = float(power_profit_norm_vec[idx])
+
         return rewards, info
 
     def _maybe_clip_reward(self, reward: float) -> float:
