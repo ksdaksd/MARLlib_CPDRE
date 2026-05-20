@@ -57,7 +57,7 @@ class CPDREConfig:
     weeks_per_year: int = 52
     off_peak_weeks: int = 26
     lead_time: int = 1
-    seed: int = 2026
+    seed: int = 42
 
     # Experiment mode
     mechanism_mode: str = "none"  # none, dynamic, long_contract, trigger
@@ -1259,7 +1259,7 @@ if __name__ == "__main__":
             "demand_mode": "deterministic",
             "price_mode": "fixed",
             "episode_len": 10,
-            "seed": 42,
+            "seed": 2026,
         }
     )
     obs = env.reset()

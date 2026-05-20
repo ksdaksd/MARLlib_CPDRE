@@ -24,7 +24,7 @@ PROGRESS_DIR = OUTPUT_DIR / "progress_summary"
 TABLE_DIR = OUTPUT_DIR / "tables"
 FIGURE_DIR = OUTPUT_DIR / "figures"
 
-DEFAULT_SEEDS = [2024, 2025, 2026, 2027, 2028]
+DEFAULT_SEEDS = [40, 41, 42, 43, 44]
 
 EXP1_GROUPS: Dict[str, Dict[str, Any]] = {
     "A0": {"demand_mode": "deterministic", "demand_sigma": 0.0, "kind": "baseline", "policy": "base_stock", "algo": None, "label": "Base-stock, deterministic seasonal demand"},

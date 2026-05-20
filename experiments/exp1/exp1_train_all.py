@@ -5,7 +5,14 @@ import subprocess
 import sys
 from datetime import datetime
 
-from exp_20260513_model_direct.exp1_common import OUTPUT_DIR, ensure_dirs, parse_groups, parse_seeds, write_json
+import os
+import sys
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.insert(0, PROJECT_ROOT)
+print("PROJECT_ROOT =", PROJECT_ROOT)
+
+
+from experiments.exp1.exp1_common import OUTPUT_DIR, ensure_dirs, parse_groups, parse_seeds, write_json
 
 
 def main():

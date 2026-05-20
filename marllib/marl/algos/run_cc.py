@@ -161,9 +161,11 @@ def run_cc(exp_info, env, model, stop=None):
     #########################
     ### experiment config ###
     #########################
-
+    seed = int(exp_info.get("env_args", {}).get("seed", exp_info["seed"]))
+    exp_info["seed"] = seed
+    exp_info["env_args"]["seed"] = seed
     run_config = {
-        "seed": int(exp_info["seed"]),
+        "seed": seed,
         "env": exp_info["env"] + "_" + exp_info["env_args"]["map_name"],
         "num_gpus_per_worker": exp_info["num_gpus_per_worker"],
         "num_gpus": exp_info["num_gpus"],
@@ -173,7 +175,8 @@ def run_cc(exp_info, env, model, stop=None):
             "policy_mapping_fn": policy_mapping_fn
         },
         "framework": exp_info["framework"],
-        "evaluation_interval": exp_info["evaluation_interval"],
+        "evaluation_interval": None,
+        "evaluation_num_workers": 0,
         "simple_optimizer": False  # force using better optimizer
     }
 

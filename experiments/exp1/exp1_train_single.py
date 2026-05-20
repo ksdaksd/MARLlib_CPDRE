@@ -7,7 +7,7 @@ from marllib import marl
 
 import marllib.envs.base_env.cpdre  # noqa: F401
 
-from exp1.exp1_common import (
+from exp_20260513_model_direct.exp1_common import (
     EXP1_GROUPS,
     RL_META_DIR,
     base_env_args,
@@ -30,11 +30,11 @@ def build_algo(algo_name: str):
 def main():
     parser = argparse.ArgumentParser(description="Run one formal Experiment 1 RL group/seed.")
     parser.add_argument("--group_id", type=str, required=True, choices=["A2", "A3", "A4", "A7", "A8", "A9"])
-    parser.add_argument("--seed", type=int, default=2026)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--episode_len", type=int, default=156)
     parser.add_argument("--timesteps", type=int, default=100000)
     parser.add_argument("--price_mode", type=str, default="fixed", choices=["fixed", "seasonal", "feedback"])
-    parser.add_argument("--share_policy", type=str, default="individual", choices=["group", "individual"])
+    parser.add_argument("--share_policy", type=str, default="group", choices=["group", "individual"])
     parser.add_argument("--core_arch", type=str, default="gru", choices=["gru", "lstm", "mlp"])
     parser.add_argument("--encode_layer", type=str, default="128-128")
     parser.add_argument("--num_workers", type=int, default=0)
@@ -52,7 +52,6 @@ def main():
 
     env_args = base_env_args(seed=args.seed, group_id=args.group_id, episode_len=args.episode_len, price_mode=args.price_mode)
 
-
     print("Start formal CPDRE Experiment 1 RL training")
     print("group_id:", args.group_id)
     print("label:", group["label"])
@@ -64,20 +63,6 @@ def main():
     print("share_policy:", args.share_policy)
 
     env = marl.make_env(environment_name="cpdre", **env_args)
-    # HAPPO uses heterogeneous sequential updating in MARLlib.
-    # agent_level_batch_update is a MARLlib top-level env config,
-    # not a CPDRE env_args parameter, so it must not be passed into marl.make_env().
-    if args.group_id in ["A4", "A9"]:
-        if isinstance(env, tuple) and len(env) >= 2 and isinstance(env[1], dict):
-            env[1]["seed"] = args.seed
-            if "env_args" in env[1]:
-                env[1]["env_args"]["seed"] = args.seed
-
-            env[1]["agent_level_batch_update"] = True
-            print("Set agent_level_batch_update=True for HAPPO.")
-        else:
-            print("Warning: cannot set agent_level_batch_update because env config is not a tuple/dict.")
-
     algo = build_algo(algo_name)
 
     model = marl.build_model(env, algo, {"core_arch": args.core_arch, "encode_layer": args.encode_layer})
