@@ -20,6 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+try:
+    from experiments.exp1.cpdre_callbacks import CPDREMetricsCallback
+except Exception:
+    CPDREMetricsCallback = None
+
 import ray
 import gym
 from ray import tune
@@ -45,6 +50,8 @@ def restore_config_update(exp_info, run_config, stop_config):
                     "render_env": True,
                 }
             }
+            if CPDREMetricsCallback is not None and str(exp_info.get("env", "")).lower() == "cpdre":
+                run_config["callbacks"] = CPDREMetricsCallback
 
             run_config = recursive_dict_update(run_config, render_config)
 
