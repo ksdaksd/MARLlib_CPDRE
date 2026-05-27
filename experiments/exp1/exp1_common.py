@@ -71,7 +71,7 @@ def set_global_seed(seed: int) -> None:
             torch.cuda.manual_seed_all(seed)
 
 
-def base_env_args(*, seed: int, group_id: str, episode_len: int = 156, price_mode: str = "fixed") -> Dict[str, Any]:
+def base_env_args(*, seed: int, group_id: str, episode_len: int = 156, price_mode: str = "seasonal") -> Dict[str, Any]:
     group = EXP1_GROUPS[group_id]
     return {
         "map_name": f"direct_1c3u_{group_id}_s{seed}",

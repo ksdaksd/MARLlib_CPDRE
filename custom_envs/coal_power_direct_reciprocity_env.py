@@ -524,6 +524,7 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
         g_u, g_c = self._compute_reciprocity_contributions(
             season=season,
             base_demand=base_demand,
+            supply=float(supply),
             shipments=shipments,
             shipments_fair=shipments_fair,
             shipments_base_u=shipments_base_u,
@@ -865,15 +866,32 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
         self,
         season: int,
         base_demand: np.ndarray,
+        supply: float,
         shipments: np.ndarray,
         shipments_fair: np.ndarray,
         shipments_base_u: np.ndarray,
     ) -> Tuple[float, float]:
         """Actual incremental reciprocity contributions gU and gC.
 
-        gU: off-peak incremental transaction caused by U1's actual order above
-            baseline behavior.
-        gC: peak incremental guarantee to U1 above fair allocation baseline.
+        Following Section 4.2.7 of the modeling document:
+
+        gU (off-peak): U1's real incremental contribution is measured by the
+            reduction of the coal firm's leftover supply caused by U1's actual
+            ordering behavior relative to the counterfactual order baseline.
+            Formally:
+                gU_t = I(z_t=0) * min{ [E^{base,U}_t - E_t]^+ / (D_bar_1 + eps), 1 }
+            where:
+                E_t           = max(A_t - sum(Y_t), 0)               (actual leftover)
+                E^{base,U}_t  = max(A_t - sum(Y^{base,U}_t), 0)       (counterfactual leftover)
+
+            This definition closes the loophole described in Sec. 4.2.7 case
+            (iii): if total orders already exceed supply, both E and E^{base,U}
+            are zero and gU = 0, so U1 cannot earn fake reciprocity simply by
+            crowding out ordinary power firms.
+
+        gC (peak): coal firm's real incremental guarantee to U1 is measured by
+            U1's actual shipment above the fair-allocation baseline:
+                gC_t = I(z_t=1) * min{ [Y_{1,t} - Y^0_{1,t}]^+ / (D_bar_1 + eps), 1 }
         """
         if not self._reciprocity_enabled():
             return 0.0, 0.0
@@ -881,7 +899,12 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
         denom = float(base_demand[0] + EPS)
 
         if season == 0:
-            g_u = min(max(float(shipments[0] - shipments_base_u[0]), 0.0) / denom, 1.0)
+            # Coal firm's actual leftover supply (E_t).
+            e_actual = max(float(supply) - float(shipments.sum()), 0.0)
+            # Counterfactual leftover supply under U1's baseline order (E^{base,U}_t).
+            e_baseu = max(float(supply) - float(shipments_base_u.sum()), 0.0)
+            # Reduction of leftover supply caused by U1's actual order.
+            g_u = min(max(e_baseu - e_actual, 0.0) / denom, 1.0)
             g_c = 0.0
         else:
             g_u = 0.0
@@ -961,12 +984,15 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
         coal_profit_norm = float(coal_profit / system_money_ref)
         power_profit_norm_vec = power_profit_vec / unit_money_ref
 
-        # 3. 缺煤惩罚归一化
-        # reward 里建议用当季系统基准需求作分母，避免随机需求冲击改变惩罚尺度
-        base_demand_ref = max(float(np.sum(self.current_base_demand)), EPS)
-        shortage_norm = float(np.sum(shortage) / base_demand_ref)
+        # 3. 缺煤惩罚归一化（按建模文档 4.3.6 节）
+        #    \widetilde S^{sys}_t = S^{sys}_t / (\sum_i D_{i,t} + \varepsilon)
+        # 即用当期真实需求 D_{i,t} 作分母，而不是当季基准需求 \bar D_i(z_t)。
+        # 在确定性需求模式下两者相等；在随机需求模式下，前者使缺煤率自然成为
+        # [0, 1] 之间的真实比率，与论文中报告的 shortage_rate 完全一致。
+        total_demand_ref = max(float(np.sum(demand)), EPS)
+        shortage_norm = float(np.sum(shortage) / total_demand_ref)
 
-        # 结果评价里仍保留真实缺煤率，便于论文汇报
+        # 结果评价指标：与 shortage_norm 等价（同一分母），保留作论文报告。
         shortage_rate = float(np.sum(shortage) / (np.sum(demand) + EPS))
 
         # 4. Jain 公平性和互惠贡献本身已经是无量纲变量，不再二次归一化
@@ -1124,6 +1150,14 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
         q3 = pad3(last_orders)
         y3 = pad3(last_shipments)
 
+        # Per Section 4.3.3 of the modeling document:
+        # - Coal firm observation:  (ell, z, p, A, mu^C, {Q_{i,t-1}, Y_{i,t-1}})
+        # - Power firm observation: (ell, z, p, I, P, D_{t-1}, Q_{t-1}, Y_{t-1},
+        #                            S_{t-1}, rho, mu_obs)
+        # Neither role observes theta_{z_t}. We keep idx 7 as a hard-coded
+        # zero (reserved) so that obs_dim stays at 24 and existing network
+        # checkpoints remain loadable. The caller still passes a theta_public
+        # value but it is ignored here.
         values = np.array(
             [
                 kwargs["role_coal"],            # 0
@@ -1133,8 +1167,8 @@ class CoalPowerDirectReciprocityEnv(MultiAgentEnv):
                 kwargs["ell"],                  # 4
                 float(kwargs["season"]),        # 5
                 kwargs["price"],                # 6
-                kwargs["theta_public"],         # 7
-                kwargs["supply_info"],          # 8, coal only
+                0.0,                            # 7 reserved (was theta_public; removed per Sec. 4.3.3)
+                kwargs["supply_info"],          # 8, coal only (A_t)
                 kwargs["own_inventory"],        # 9, power only
                 kwargs["own_pipeline"],         # 10, power only
                 kwargs["own_last_demand"],      # 11, power only

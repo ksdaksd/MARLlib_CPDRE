@@ -57,7 +57,7 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--episode_len", type=int, default=156)
     parser.add_argument("--timesteps", type=int, default=100000)
-    parser.add_argument("--price_mode", type=str, default="fixed", choices=["fixed", "seasonal", "feedback"])
+    parser.add_argument("--price_mode", type=str, default="seasonal", choices=["fixed", "seasonal", "feedback"])
     parser.add_argument("--share_policy", type=str, default="group", choices=["group", "individual"])
     parser.add_argument("--core_arch", type=str, default="gru", choices=["gru", "lstm", "mlp"])
     parser.add_argument("--encode_layer", type=str, default="128-128")
