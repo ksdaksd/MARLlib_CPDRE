@@ -50,8 +50,6 @@ def restore_config_update(exp_info, run_config, stop_config):
                     "render_env": True,
                 }
             }
-            if CPDREMetricsCallback is not None and str(exp_info.get("env", "")).lower() == "cpdre":
-                run_config["callbacks"] = CPDREMetricsCallback
 
             run_config = recursive_dict_update(run_config, render_config)
 
@@ -196,6 +194,23 @@ def run_cc(exp_info, env, model, stop=None):
     stop_config = dict_update(stop_config, stop)
 
     exp_info, run_config, stop_config, restore_config = restore_config_update(exp_info, run_config, stop_config)
+
+    # Attach RLlib callbacks passed from algo.fit(...).
+    # exp1_train_single.py passes callbacks=CPDREMetricsCallback into algo.fit,
+    # and marllib.marl.__init__._Algo.fit merges it into exp_info.
+    callbacks = exp_info.get("callbacks", None)
+
+    # Fallback: if no callback is passed explicitly, use CPDREMetricsCallback
+    # for CPDRE experiments when it can be imported.
+    if callbacks is None and CPDREMetricsCallback is not None:
+        if str(exp_info.get("env", "")).lower() == "cpdre":
+            callbacks = CPDREMetricsCallback
+
+    if callbacks is not None:
+        run_config["callbacks"] = callbacks
+        print("[CPDRE] RLlib callbacks attached:", callbacks)
+    else:
+        print("[CPDRE] No RLlib callbacks attached.")
 
     ##################
     ### run script ###

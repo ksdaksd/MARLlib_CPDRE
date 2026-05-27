@@ -30,12 +30,12 @@ from experiments.exp1.exp1_common import (
 
 # Import the new callback
 try:
-    from experiments.exp1.cpdre_callbacks_v3 import (
+    from experiments.exp1.cpdre_callbacks_v2 import (
         CPDREMetricsCallbackV2,
         CPDRECompleteHistoryCallback,
     )
 except ImportError:
-    print("Warning: cpdre_callbacks_v3 not found, falling back to old callback")
+    print("Warning: cpdre_callbacks_v2 not found, falling back to old callback")
     from experiments.exp1.cpdre_callbacks import CPDREMetricsCallback
     CPDREMetricsCallbackV2 = CPDREMetricsCallback
     CPDRECompleteHistoryCallback = None
