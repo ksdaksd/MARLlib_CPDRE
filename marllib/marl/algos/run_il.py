@@ -27,7 +27,7 @@ from ray.rllib.utils.framework import try_import_tf, try_import_torch
 from ray.rllib.policy.policy import PolicySpec
 from marllib.marl.algos.scripts import POlICY_REGISTRY
 from marllib.marl.common import recursive_dict_update, dict_update
-from marllib.marl.algos.run_cc import restore_config_update
+from marllib.marl.algos.run_cc import restore_config_update, attach_cpdre_callbacks
 
 tf1, tf, tfv = try_import_tf()
 torch, nn = try_import_torch()
@@ -121,8 +121,16 @@ def run_il(exp_info, env, model, stop=None):
     ### experiment config ###
     #########################
 
+    # Synchronize seeds: prefer env_args.seed (set via command-line --seed)
+    # over ray.yaml's default `seed: 321`. Without this, the RLlib trainer
+    # seed (used for policy network init and action sampling) would silently
+    # default to 321 while the environment seed comes from the user's CLI.
+    seed = int(exp_info.get("env_args", {}).get("seed", exp_info["seed"]))
+    exp_info["seed"] = seed
+    exp_info["env_args"]["seed"] = seed
+
     run_config = {
-        "seed": int(exp_info["seed"]),
+        "seed": seed,
         "env": exp_info["env"] + "_" + exp_info["env_args"]["map_name"],
         "num_gpus_per_worker": exp_info["num_gpus_per_worker"],
         "num_gpus": exp_info["num_gpus"],
@@ -132,7 +140,12 @@ def run_il(exp_info, env, model, stop=None):
             "policy_mapping_fn": policy_mapping_fn
         },
         "framework": exp_info["framework"],
-        "evaluation_interval": exp_info["evaluation_interval"],
+        # Disable RLlib's built-in evaluation worker (matches run_cc.py).
+        # Without this, the trainer process produces a separate worker-0 CSV
+        # of 10 evaluation episodes that bloats the data and is inconsistent
+        # with CC/VD algorithms.
+        "evaluation_interval": None,
+        "evaluation_num_workers": 0,
         "simple_optimizer": False  # force using better optimizer
     }
 
@@ -145,6 +158,10 @@ def run_il(exp_info, env, model, stop=None):
     stop_config = dict_update(stop_config, stop)
 
     exp_info, run_config, stop_config, restore_config = restore_config_update(exp_info, run_config, stop_config)
+
+    # Attach RLlib callbacks (CPDRE data collection v3 by default;
+    # or whatever was passed via algo.fit(..., callbacks=...)).
+    attach_cpdre_callbacks(run_config, exp_info, source="run_il")
 
     ##################
     ### run script ###

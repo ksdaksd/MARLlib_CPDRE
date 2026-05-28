@@ -29,6 +29,7 @@ from ray.rllib.utils.framework import try_import_tf, try_import_torch
 from marllib.marl.algos.scripts import POlICY_REGISTRY
 from marllib.envs.global_reward_env import COOP_ENV_REGISTRY as ENV_REGISTRY
 from marllib.marl.common import recursive_dict_update, dict_update
+from marllib.marl.algos.run_cc import attach_cpdre_callbacks
 from marllib.marl.algos.run_cc import restore_config_update
 
 tf1, tf, tfv = try_import_tf()
@@ -176,8 +177,16 @@ def run_vd(exp_info, env, model, stop=None):
     ### experiment config ###
     #########################
 
+    # Synchronize seeds: prefer env_args.seed (set via command-line --seed)
+    # over ray.yaml's default `seed: 321`. Without this, the RLlib trainer
+    # seed (used for policy network init and action sampling) would silently
+    # default to 321 while the environment seed comes from the user's CLI.
+    seed = int(exp_info.get("env_args", {}).get("seed", exp_info["seed"]))
+    exp_info["seed"] = seed
+    exp_info["env_args"]["seed"] = seed
+
     run_config = {
-        "seed": int(exp_info["seed"]),
+        "seed": seed,
         "env": env_reg_name,
         "num_gpus_per_worker": exp_info["num_gpus_per_worker"],
         "num_gpus": exp_info["num_gpus"],
@@ -187,7 +196,11 @@ def run_vd(exp_info, env, model, stop=None):
             "policy_mapping_fn": policy_mapping_fn
         },
         "framework": exp_info["framework"],
-        "evaluation_interval": exp_info["evaluation_interval"],
+        # Disable RLlib's built-in evaluation worker (matches run_cc.py).
+        # Otherwise IPPO/IDDPG/QMIX would produce extra worker-0 CSVs that are
+        # inconsistent with CC algorithms (MAPPO/HAPPO).
+        "evaluation_interval": None,
+        "evaluation_num_workers": 0,
         "simple_optimizer": False  # force using better optimizer
     }
 
@@ -200,6 +213,10 @@ def run_vd(exp_info, env, model, stop=None):
     stop_config = dict_update(stop_config, stop)
 
     exp_info, run_config, stop_config, restore_config = restore_config_update(exp_info, run_config, stop_config)
+
+    # Attach RLlib callbacks (CPDRE data collection v3 by default;
+    # or whatever was passed via algo.fit(..., callbacks=...)).
+    attach_cpdre_callbacks(run_config, exp_info, source="run_vd")
 
     ##################
     ### run script ###

@@ -20,10 +20,45 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Prefer the adaptive v3 callback (writes CSV/NPZ directly on episode end,
+# auto-detects per-agent fields). Fall back to legacy if v3 not present.
 try:
-    from experiments.exp1.cpdre_callbacks import CPDREMetricsCallback
-except Exception:
-    CPDREMetricsCallback = None
+    from experiments.exp1.cpdre_callbacks_v3 import CPDREAdaptiveCallback as CPDREMetricsCallback
+    print("[CPDRE] callbacks module loaded CPDREAdaptiveCallback (v3)")
+except Exception as _e_v3:
+    try:
+        from experiments.exp1.cpdre_callbacks import CPDREMetricsCallback
+        print(f"[CPDRE] callbacks module fell back to legacy (v3 import failed: {_e_v3})")
+    except Exception:
+        CPDREMetricsCallback = None
+
+
+def attach_cpdre_callbacks(run_config, exp_info, source: str = ""):
+    """
+    Attach the CPDRE metrics callback to a RLlib run_config dict in-place.
+
+    Used by run_cc / run_il / run_vd to ensure CSV/NPZ data collection
+    works regardless of which algorithm family is selected.
+
+    Resolution order:
+      1. Use callbacks explicitly passed via algo.fit(..., callbacks=...).
+      2. Fall back to CPDREMetricsCallback (v3 if available) when env == "cpdre".
+      3. Otherwise leave run_config["callbacks"] unset.
+    """
+    callbacks = exp_info.get("callbacks", None)
+
+    if callbacks is None and CPDREMetricsCallback is not None:
+        if str(exp_info.get("env", "")).lower() == "cpdre":
+            callbacks = CPDREMetricsCallback
+
+    if callbacks is not None:
+        run_config["callbacks"] = callbacks
+        print(f"[CPDRE] RLlib callbacks attached from {source or '?'}: {callbacks}")
+    else:
+        print(f"[CPDRE] No RLlib callbacks attached ({source or '?'}).")
+
+    return run_config
+    # print(f"[CPDRE] run_cc.py: no callback available (v3 error: {_e_v3})")
 
 import ray
 import gym
@@ -195,22 +230,9 @@ def run_cc(exp_info, env, model, stop=None):
 
     exp_info, run_config, stop_config, restore_config = restore_config_update(exp_info, run_config, stop_config)
 
-    # Attach RLlib callbacks passed from algo.fit(...).
-    # exp1_train_single.py passes callbacks=CPDREMetricsCallback into algo.fit,
-    # and marllib.marl.__init__._Algo.fit merges it into exp_info.
-    callbacks = exp_info.get("callbacks", None)
-
-    # Fallback: if no callback is passed explicitly, use CPDREMetricsCallback
-    # for CPDRE experiments when it can be imported.
-    if callbacks is None and CPDREMetricsCallback is not None:
-        if str(exp_info.get("env", "")).lower() == "cpdre":
-            callbacks = CPDREMetricsCallback
-
-    if callbacks is not None:
-        run_config["callbacks"] = callbacks
-        print("[CPDRE] RLlib callbacks attached:", callbacks)
-    else:
-        print("[CPDRE] No RLlib callbacks attached.")
+    # Attach RLlib callbacks (CPDRE data collection v3 by default;
+    # or whatever was passed via algo.fit(..., callbacks=...)).
+    attach_cpdre_callbacks(run_config, exp_info, source="run_cc")
 
     ##################
     ### run script ###
