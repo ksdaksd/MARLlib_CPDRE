@@ -1,0 +1,117 @@
+# ==================== 环境配置 ====================
+# CPDRE 环境参数 (对齐 model/0611(1).md 表4.2)
+env:
+  map_name: "direct_1c3u_A4_s42"
+  num_power: 3              # m (model 4.5.2)
+  num_reciprocal: 1         # h (model exp5; core h=1)
+  episode_len: 156          # T (3 years weekly)
+  weeks_per_year: 52        # W
+  off_peak_weeks: 26        # legacy season split (rule modes only)
+  lead_time: 1              # L
+  seed: 42
+  eval_seed_offset: 9000    # s^eval_0 (model 4.3 table)
+  mechanism_mode: "b4"      # none / b2 / b4 / b5 / dynamic / long_contract / trigger
+  allocation_mode: "fair"
+  demand_mode: "lognormal"        # 主实验: 季节性 + 乘性随机扰动 (model 4.3.1); deterministic 仅 A6 对照
+  price_mode: "seasonal"         # fixed / seasonal / feedback
+  # Demand process (model 4.3.1): sinusoidal s^D_t = 1 + a_D sin(2pi(t-phi)/W)
+  demand_offpeak: 1.0       # D_bar
+  demand_peak: 1.4          # legacy two-level (rule modes only)
+  demand_season_amp: 0.20   # a_D
+  demand_season_phi: 0      # phi_D (weeks)
+  demand_sigma: 0.15        # sigma_D
+  demand_ar1_rho: 0.60
+  demand_corr: 0.0          # cross-firm correlation (exp4 D0-D3)
+  demand_common_pool: false # exp4 D3
+  demand_vol_scale: []      # exp4 D4 per-firm volatility scale
+  # Supply process (model 4.3.1): G_t = theta_t * K
+  K_capacity: null          # null -> K = m * D_bar (model 4.5.2)
+  theta_min: 0.70
+  theta_max: 1.20
+  theta_init: 1.0
+  rho_max: 0.05             # ramp constraint
+  theta_offpeak: 1.15       # legacy schedule (rule modes only)
+  theta_peak: 0.80
+  supply_sigma: 0.0
+  # Price (model 4.5.2: p^base = 1.00)
+  price_offpeak: 1.0
+  price_peak: 1.2
+  price_sigma: 0.0
+  price_feedback_kappa: 0.10
+  price_feedback_psi: 0.70
+  # Inventory / order (model 4.5.2)
+  omega_min: 1.0
+  omega_max: 5.0
+  omega_base: 2.0
+  omega_high: 3.0
+  safe_inventory_weeks: 1.5
+  q_max_weeks: 6.0
+  lambda_d: 0.30
+  lambda_max: 2.0           # guarantee weight upper bound
+  # Trust / reciprocity (model 4.5.2)
+  mu_c_init: 0.50
+  mu_u_init: 0.50
+  alpha_c: 0.05
+  alpha_u: 0.05
+  delta_c: 0.005
+  delta_u: 0.005
+  trust_threshold_c: 0.40   # rule-reciprocity trigger
+  trust_threshold_u: 0.40
+  use_reciprocity_reward: false  # main model EXCLUDES eta*mu*g (model 4.3.5)
+  # Economic params (model 4.5.2 table 4.2)
+  p_base: 1.00
+  coal_unit_cost: 0.70      # c^C (on G_t)
+  power_unit_revenue: 1.80  # r
+  holding_cost: 0.03        # h
+  c_rep: 1.60               # external emergency purchase price (p < c_rep < r)
+  xi_lost: 5.00             # lost-load penalty (robustness only)
+  # Reward weights (model 4.5.2 table 4.2)
+  lambda_coal_shortage: 0.50   # lambda_S
+  lambda_coal_fairness: 0.30   # lambda_J
+  # C5 ablation
+  freeze_theta: false
+  include_reciprocity_in_obs: true
+
+# ==================== 算法超参数 ====================
+# 通用训练参数 (对齐 model 0611(1).md 表4.3)
+train:
+  total_timesteps: 100000   # N_step = 1.0e5
+  episode_len: 156          # 单个episode长度（用于RNN序列重组）
+  rollout_length: 1560      # 每次 rollout 的步数 (10 episodes)
+  num_sgd_iter: 15          # E_ppo (model 4.5.2)
+  log_freq: 1
+  eval_freq: 10000
+  eval_episodes: 64         # N_eval (model 4.3 table)
+  chunk_len: 10             # T_chunk: recurrent sequence training length (model 4.3 table)
+  log_step_details: false
+
+# PPO 核心参数 (对齐 model 0611(1).md 表4.3)
+ppo:
+  gamma: 0.95               # 折扣因子
+  gae_lambda: 0.95          # GAE lambda
+  clip_param: 0.20          # PPO clip
+  value_clip_param: 10.0    # 价值函数 clip
+  entropy_coef: 0.01        # beta_H
+  value_loss_coef: 0.50     # beta_V
+  max_grad_norm: 0.50       # g_max
+
+# 学习率 (model 0611(1).md 表4.3: eta_pi = eta_V = 1e-4)
+lr:
+  actor_lr: 0.0001          # 1e-4
+  critic_lr: 0.0001         # 1e-4
+
+# 网络架构 (model 0611(1).md 表4.3)
+model:
+  hidden_dim: 128           # d_h
+  rnn_layers: 2             # L_rnn (GRU 层数)
+
+# 系统配置
+system:
+  device: "cuda"            # cuda / cpu
+  log_dir: "./logs/cleanmarl"
+  checkpoint_dir: "./checkpoints"
+
+# ==================== 实验配置 ====================
+experiment:
+  name: "happo_cpdre_b4_seed42"
+  algo: "happo"             # happo / mappo / ippo / fixed / rule_a1 / rule_a2 / rule_b1 / rule_b3 / rule_b4

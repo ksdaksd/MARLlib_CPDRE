@@ -1,0 +1,4 @@
+interface:
+  display_name: "Human Write"
+  short_description: "Natural Chinese writing for formal deliverables."
+  default_prompt: "Apply the Human Write standard to draft or revise this Chinese document with natural tone, complete logic, and delivery-ready structure."

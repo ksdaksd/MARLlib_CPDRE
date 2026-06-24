@@ -1,0 +1,104 @@
+# ==================== MAPPO 配置 ====================
+# 与 HAPPO 类似，但使用并行策略更新（不迭代 advantage）
+# 对齐 model/0611(1).md (b4 关系专属动态直接互惠, MAPPO 算法稳健性对照)
+
+env:
+  map_name: "direct_1c3u_b4_mappo_s42"
+  num_power: 3
+  num_reciprocal: 1
+  episode_len: 156
+  weeks_per_year: 52
+  off_peak_weeks: 26
+  lead_time: 1
+  seed: 42
+  eval_seed_offset: 9000
+  mechanism_mode: "b4"
+  allocation_mode: "weighted"  # b4 学 lambda_{1,t}, 不能用 fair 抹掉保供权重
+  demand_mode: "lognormal"   # 主实验: 季节性 + 乘性随机扰动 (model 4.3.1)
+  price_mode: "seasonal"
+  demand_offpeak: 1.0
+  demand_peak: 1.4
+  demand_season_amp: 0.20
+  demand_season_phi: 0
+  demand_sigma: 0.15
+  demand_ar1_rho: 0.60
+  demand_corr: 0.0
+  demand_common_pool: false
+  demand_vol_scale: []
+  K_capacity: null
+  theta_min: 0.70
+  theta_max: 1.20
+  theta_init: 1.0
+  rho_max: 0.05
+  theta_offpeak: 1.15
+  theta_peak: 0.80
+  supply_sigma: 0.0
+  price_offpeak: 1.0
+  price_peak: 1.2
+  price_sigma: 0.0
+  price_feedback_kappa: 0.10
+  price_feedback_psi: 0.70
+  omega_min: 1.0
+  omega_max: 5.0
+  omega_base: 2.0
+  omega_high: 3.0
+  safe_inventory_weeks: 1.5
+  q_max_weeks: 6.0
+  lambda_d: 0.30
+  lambda_max: 2.0
+  mu_c_init: 0.50
+  mu_u_init: 0.50
+  alpha_c: 0.05
+  alpha_u: 0.05
+  delta_c: 0.005
+  delta_u: 0.005
+  trust_threshold_c: 0.40
+  trust_threshold_u: 0.40
+  use_reciprocity_reward: false
+  p_base: 1.00
+  coal_unit_cost: 0.70
+  power_unit_revenue: 1.80
+  holding_cost: 0.03
+  c_rep: 1.60
+  xi_lost: 5.00
+  lambda_coal_shortage: 0.50
+  lambda_coal_fairness: 0.30
+  freeze_theta: false
+  include_reciprocity_in_obs: true
+
+train:
+  total_timesteps: 100000
+  episode_len: 156
+  rollout_length: 1560
+  num_sgd_iter: 15
+  log_freq: 1
+  eval_freq: 10000
+  eval_episodes: 64
+  chunk_len: 10             # T_chunk (model 0611(1).md 表4.3)
+  log_step_details: false
+
+ppo:
+  gamma: 0.95
+  gae_lambda: 0.95
+  clip_param: 0.20
+  value_clip_param: 10.0
+  entropy_coef: 0.01
+  value_loss_coef: 0.50
+  max_grad_norm: 0.50
+
+lr:
+  actor_lr: 0.0001
+  critic_lr: 0.0001
+
+model:
+  hidden_dim: 128
+  rnn_layers: 2             # L_rnn (model 0611(1).md 表4.3)
+
+system:
+  device: "cuda"
+  log_dir: "./logs/cleanmarl"
+  checkpoint_dir: "./checkpoints"
+
+experiment:
+  name: "mappo_cpdre_b4_seed42"
+  algo: "mappo"
